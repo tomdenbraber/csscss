@@ -1,18 +1,34 @@
 module Csscss
-  class Declaration < Struct.new(:property, :value, :parents)
+  class Declaration < Struct.new(:property, :value, :offset, :parents)
     def self.from_csspool(dec)
       new(dec.property.to_s.downcase, dec.expressions.join(" ").downcase)
     end
-
+	
+	# refactor to a small function which cales from_parser_with_offset
     def self.from_parser(property, value, clean = true)
-      value = value.to_s
+	  begin
+		offset = property.offset
+	  rescue NoMethodError
+		offset = -1
+	  end
+	  value = value.to_s
       property = property.to_s
       if clean
         value = value.downcase
         property = property.downcase
       end
-      new(property, value.strip)
+      new(property, value.strip, offset)
     end
+	
+	def self.from_parser_with_offset(property, value, offset, clean = true)
+		value = value.to_s
+		property = property.to_s
+		if clean
+		  value = value.downcase
+		  property = property.downcase
+		end
+		new(property, value.strip, offset)
+	end
 
     def derivative?
       !parents.nil?
@@ -79,9 +95,15 @@ module Csscss
     end
   end
 
-  class Selector < Struct.new(:selectors)
+  class Selector < Struct.new(:selectors, :offset)
     def self.from_parser(selectors)
-      new(selectors.to_s.strip)
+	  begin
+		offset = selectors.offset
+	  rescue NoMethodError
+		offset = -1
+	  end
+	
+      new(selectors.to_s.strip, offset)
     end
 
     def <=>(other)

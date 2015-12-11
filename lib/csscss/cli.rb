@@ -20,22 +20,33 @@ module Csscss
     private
     def execute
       deprecate("Use --show-parser-errors instead of CSSCSS_DEBUG") if ENV["CSSCSS_DEBUG"]
-
+      
+	  offset_container = {}
+	  current_offset = 0
+	  
       all_contents= @argv.map do |filename|
+	    current_file = nil
         if filename =~ URI.regexp
-          load_css_file(filename)
+          current_file = load_css_file(filename)
         else
           case File.extname(filename).downcase
           when ".scss", ".sass"
-            load_sass_file(filename)
+            current_file = load_sass_file(filename)
           when ".less"
-            load_less_file(filename)
+            current_file = load_less_file(filename)
           else
-            load_css_file(filename)
+            current_file = load_css_file(filename)
           end
         end
+		
+		offset_container[current_offset..(current_offset + current_file.length)] = filename
+		current_offset += current_file.length
+		current_file
       end.join("\n")
-
+	  
+	  # offset container now contains the line range for each css file in the input
+	  print offset_container
+	  
       unless all_contents.strip.empty?
         redundancies = RedundancyAnalyzer.new(all_contents).redundancies(
           minimum:            @minimum,
@@ -45,7 +56,7 @@ module Csscss
         )
 
         if @json
-          puts JSONReporter.new(redundancies).report
+          puts JSONReporter.new(redundancies).report(offset_container)
         else
           report = Reporter.new(redundancies).report(verbose:@verbose, color:@color)
           puts report unless report.empty?
